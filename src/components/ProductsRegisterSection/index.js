@@ -1,16 +1,16 @@
-import React, {useState, useRef} from 'react'
+import React, {useState} from 'react'
 import axios from 'axios'
+import {ContainerR, Button, Link, H1, CentralBox, Form, Label, Input, Textarea, ButtonSubmit} from './elements'
 
-import {Container, Link, P, H1, Form, Label, Input, Textarea, Button} from './elements'
+import Alert from './Alert'
 
 function ProductsForm (props){
 
-	/*file*/
-	const fileInput = React.useRef();
-	/*file*/
 	const [previewSource, setPreviewSource] = useState()
 	const [fileInputState, setFileInputState] = useState('')
 	const [selectedFile, setSelectedFile] = useState();
+	const [loading, setLoading] = useState(false)
+	const [successMsg, setSuccessMsg] = useState('');
 	const [products, setProducts] = useState({
 		nombre: '',
 		descripcion: '',
@@ -21,118 +21,140 @@ function ProductsForm (props){
 	const handleFileInputChange = (e) =>{
 		const file = e.target.files[0]
 		previewFile(file)
-		setFileInputState(file)
+		setSelectedFile(file)
+		setFileInputState(e.target.value)
 	}
+
 	const previewFile = (file) =>{
-		const reader = new FileReader()
-		reader.readAsDataURL(file)
-		reader.onloadend = () =>{
+
+		var fileBase64 = document.getElementById('gFile');
+		var fileType = document.getElementById('gFileType');
+
+		var reader = new FileReader();
+		reader.readAsDataURL(file);
+		reader.onload = function () {
 			setPreviewSource(reader.result)
+			fileType.value = file.name.split('.').pop().toLowerCase();
+			
+			var img = new Image();
+			img.src = reader.result;
+			img.onload = function() {
+				fileBase64.value = reader.result;
+
+			};
+		};
+	}
+
+	const handleSubmitFile = (e) =>{
+
+		e.preventDefault()
+		
+		if(!selectedFile) return;
+		const reader = new FileReader();
+		reader.readAsDataURL(selectedFile)
+		reader.onloadend = () =>{
+
+			enviarDatos(reader.result)
+		};
+		reader.onerror = () =>{
+			console.error('Nooo')
 		}
+		
+		//para limpiar los inputs
+      	e.target.reset()
 	}
 
 	const handleInputChange = (event) =>{
 		setProducts({
 			...products, 
-			[event.target.name] : event.target.value
+			[event.target.name] : event.target.value,
+			
 		})
-		console.log(event.target.name + ': ' + event.target.value)
 	}
 
-
-
-	const enviarDatos = (event) =>{
-		event.preventDefault();
-		const reader = new FileReader();
-
-		const Products = {
-			nombre: products.nombre,
-			descripcion: products.descripcion,
-			codigo: products.codigo,
-			picture: products.picture
-		}
-		console.log(Products)
+	const enviarDatos = async (event) =>{
 		
-		/*axios.post('http://localhost:8080/save/products', Products).then(res => console.log(res.products))
-		setFileInputState('');
-        setPreviewSource('');*/
-
-        axios.post('http://localhost:8080/save/products', Products)
-		setFileInputState('');
-    	setPreviewSource('');
-
-		window.location = "/"
-
-		/*event.preventDefault();
-		if(!selectedFile) return
-		const reader = new FileReader();
-		reader.readAsDataURL(selectedFile);
-		reader.onloadend=()=>{
-			uploadImage(reader.result)
-		};
-		reader.onerror = () =>{
-			console.error('NOOOOOO')
-		}*/
-	}
-
-
-	const uploadImage = async(base64EncodedImage) =>{
-		const Products = {
-			nombre: products.nombre,
-			descripcion: products.descripcion,
-			codigo: products.codigo,
-			picture: products.picture
-		}
 		try{
 			
-			axios.post('http://localhost:8080/save/products', Products, {
+			const Products = {
+				nombre: products.nombre,
+				descripcion: products.descripcion,
+				codigo: products.codigo,
+				picture: document.getElementById('gFile').value
+			}
 			
-				body: JSON.stringify({ data: base64EncodedImage }),
-            	headers: { 'Content-Type': 'application/json' },
-			})
+			console.log(Products)
+			setLoading(true)
+	        await axios.post('http://localhost:8080/save/products', Products, {
+	        	body: JSON.stringify({ data: event }),
+	            headers: { 'Content-Type': 'application/json' },
+	        })
 			setFileInputState('');
-        	setPreviewSource('');
-		} catch(err){
-			console.error(err);
+	    	setPreviewSource('');
+	    	setSuccessMsg('¡Nuevo producto registrado!');
+	    	
+	    	setLoading(false)
+			//window.location = "/"
+		} catch (err){
+			console.error(err)
 		}
+		
+		
+		
 	}
-
 
 	return (
 		<>
-			<Container id="/">
-				<Link href="/products">
-					<P>Ver productos</P>
-				</Link>
-				<Form onSubmit={enviarDatos}>
-					<H1>Registra un productos</H1>
- 					<Label>
-	 					Nombre:
-	 					<Input type="text" required  name="nombre" onChange={handleInputChange}/>
-	 				</Label>
+			<ContainerR id="/">
+				<Button>
+                    <Link href="/products">
+                        Ver Productos
+                    </Link>
+                </Button>
 
-	 				<Label>
-	 					Descripción
-	 					<Textarea required name="descripcion" onChange={handleInputChange}/>
-	 				</Label>
+                <Alert msg={successMsg} type="success" />
+				<H1>Registra un producto</H1>
+				<CentralBox>
+					<Form className="form-group row" onSubmit={handleSubmitFile}>
+						
+	 					<Label>
+		 					Nombre:
+		 					<Input type="text" required name="nombre" onChange={handleInputChange}/>
+		 				</Label>
 
-	 				<Label>
-	 					Código:
-	 					<Input type="text" required  name="codigo" onChange={handleInputChange}/>
-	 				</Label>
+		 				<Label>
+		 					Descripción
+		 					<Textarea required name="descripcion" onChange={handleInputChange}/>
+		 				</Label>
 
-	 				<Label>
-	 					Foto:
-	 					<Input type="file" name="picture" id="fileInput" onChange={handleFileInputChange} />
-	 				</Label>
+		 				<Label>
+		 					Código:
+		 					<Input type="text" required name="codigo" onChange={handleInputChange}/>
+		 				</Label>
 
-	 				{previewSource && (
-	 					<img src={previewSource} alt="chosen" style={{height: '300px'}}/>
-	 				)}
+		 				<Label>
+		 					Foto:
+		 					<Input type="file" name="picture" id="fileInput" onChange={handleFileInputChange} />
+		 					<input type="hidden" name="gFile" id="gFile" value=""/>
+							<input type="hidden" name="gFileType" id="gFileType" value=""/>
+		 				</Label>
 
-	 				<Button type="submit">Registrar</Button>
-				</Form>
-			</Container>
+		 				{previewSource && (
+		 					<img src={previewSource} alt="chosen" style={{width:'100%', background: 'white', marginBottom:'10px'}}/>
+		 				)}
+
+		 				<ButtonSubmit type="submit">
+			 				{loading ? (
+					            <div className="spinner-border spinner-border-sm text-light" role="status" style={{background: '#0066cc'}}>
+								  <span className="sr-only"/>
+								</div>
+
+					          ): ("Registrar")
+					        }
+		 				</ButtonSubmit>
+					</Form>
+				</CentralBox>
+			</ContainerR>
 		</>
 	)
 }
