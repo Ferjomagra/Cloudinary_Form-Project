@@ -1,4 +1,4 @@
-# Nota:
+# Add Product with image Project
 # Frontend:
 Terminal 1 --> cd colabora_pe
 Inicializar: npm start
